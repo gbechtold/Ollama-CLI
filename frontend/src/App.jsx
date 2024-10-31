@@ -14,22 +14,26 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-      <div className="container mx-auto p-4">
-        <header className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Ollama Chat</h1>
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Core local</h1>
+          <div className="flex items-center gap-3">
             <ThemeToggle />
             <Settings />
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <aside className="md:col-span-1">
+        {/* Main Content */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <aside className="md:col-span-1 space-y-6">
             <NewChat />
             <ChatList />
           </aside>
 
+          {/* Main Chat Area */}
           <main className="md:col-span-3">
             <ChatWindow />
           </main>

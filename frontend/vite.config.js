@@ -14,4 +14,7 @@ export default defineConfig({
       '/api': 'http://localhost:11434',
     },
   },
+  optimizeDeps: {
+    include: ['@radix-ui/react-dialog', 'lucide-react'],
+  },
 });
