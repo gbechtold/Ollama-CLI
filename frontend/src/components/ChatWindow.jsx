@@ -14,7 +14,7 @@ const Message = ({message, isLoading}) => (
       {isLoading ? (
         <div className="flex items-center space-x-2">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Wird generiert...</span>
+          <span className="text-sm">Analysiere...</span>
         </div>
       ) : (
         <div
@@ -32,6 +32,7 @@ export default function ChatWindow() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStreamedContent, setCurrentStreamedContent] = useState('');
   const messagesEndRef = useRef(null);
   const {model, language} = useStore();
 
@@ -41,7 +42,7 @@ export default function ChatWindow() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, currentStreamedContent]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,11 +50,9 @@ export default function ChatWindow() {
 
     const userMessage = {role: 'user', content: input};
     setMessages((prev) => [...prev, userMessage]);
-    setInput(''); // Clear input immediately
+    setInput('');
     setIsLoading(true);
-
-    // Add temporary loading message
-    const loadingIndex = messages.length;
+    setCurrentStreamedContent('');
 
     try {
       const response = await fetch('http://localhost:11434/api/chat', {
@@ -62,21 +61,47 @@ export default function ChatWindow() {
         body: JSON.stringify({
           model,
           messages: [...messages, userMessage],
-          stream: false,
+          stream: true,
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to start stream');
+      }
 
-      setMessages((prev) => [
-        ...prev.slice(0, loadingIndex + 1), // Keep all messages including user's
-        data.message,
-      ]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              fullResponse += data.message.content;
+              setCurrentStreamedContent(fullResponse);
+            }
+          } catch (error) {
+            console.error('Error parsing chunk:', error);
+          }
+        }
+      }
+
+      setMessages((prev) => [...prev, {role: 'assistant', content: fullResponse}]);
+      setCurrentStreamedContent('');
 
       if (useStore.getState().settings.saveHistory) {
         useStore.getState().addToHistory({
           timestamp: new Date().toISOString(),
-          messages: [...messages, userMessage, data.message],
+          messages: [...messages, userMessage, {role: 'assistant', content: fullResponse}],
           model,
         });
       }
@@ -100,6 +125,9 @@ export default function ChatWindow() {
         {messages.map((message, index) => (
           <Message key={index} message={message} isLoading={isLoading && index === messages.length - 1} />
         ))}
+        {currentStreamedContent && (
+          <Message message={{role: 'assistant', content: currentStreamedContent}} isLoading={false} />
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -116,7 +144,7 @@ export default function ChatWindow() {
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isLoading}
             className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
                      disabled:opacity-50 disabled:cursor-not-allowed transition-colors 
                      duration-200 font-medium"
