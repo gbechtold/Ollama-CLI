@@ -1,15 +1,20 @@
 import React from 'react';
 import {Download, Trash2, MessageCircle} from 'lucide-react';
 import useStore from '../store/settings';
-import {downloadMarkdown} from '../utils/markdown';
+import {downloadMarkdown} from '../utils/markdown'; // Hier importieren wir die Funktion
 
 const ChatList = () => {
   const {history, clearHistory, settings} = useStore();
 
   const handleDownload = (chat) => {
     if (settings.markdownExport) {
-      downloadMarkdown(chat);
+      downloadMarkdown(chat); // Verwenden der importierten Funktion
     }
+  };
+
+  const getSummary = (chat) => {
+    const firstMessage = chat.messages[0]?.content || '';
+    return firstMessage.length > 35 ? firstMessage.substring(0, 32) + '...' : firstMessage;
   };
 
   if (history.length === 0) {
@@ -31,7 +36,9 @@ const ChatList = () => {
         >
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <div className="text-sm font-medium mb-1">{new Date(chat.timestamp).toLocaleString()}</div>
+              <div className="text-sm font-medium mb-1" title={new Date(chat.timestamp).toLocaleString()}>
+                {getSummary(chat)}
+              </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                 <MessageCircle className="w-3 h-3 mr-1" />
                 {chat.model}
